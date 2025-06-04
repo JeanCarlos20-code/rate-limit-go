@@ -31,7 +31,7 @@ docker-compose up -d
 
 ### 4. Fazer uma requisição de teste
 ```bash
-curl -H "API_KEY: abc123" http://localhost:8080/teste
+curl -H "API_KEY: abc123" http://localhost:8080
 ```
 Você pode modificar ou remover o header API_KEY para testar os diferentes modos de limitação.
 

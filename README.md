@@ -48,4 +48,4 @@ Para detalhes completos sobre:
   - Estratégias de armazenamento
   - Configurações detalhadas
 
-Consulte a documentação técnica
+Consulte a documentação técnica (rate-limit.doc)

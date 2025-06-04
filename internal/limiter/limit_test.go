@@ -82,3 +82,42 @@ func TestLimiter_TokenLimit_DoesNotInterfereWithIP(t *testing.T) {
 		t.Fatal("Token-x 3ª requisição deveria ser bloqueada")
 	}
 }
+
+func TestLimiter_Stress(t *testing.T) {
+	lim := NewLimiter(5, 10, 2)
+
+	ip := "192.168.0.100"
+	token := "stress-token"
+
+	successIP := 0
+	for range 10 {
+		if lim.Allow(ip, "") {
+			successIP++
+		}
+	}
+	if successIP != 5 {
+		t.Errorf("Esperava 5 requisições IP permitidas, teve %d", successIP)
+	}
+
+	successToken := 0
+	for range 15 {
+		if lim.Allow("0.0.0.0", token) {
+			successToken++
+		}
+	}
+	if successToken != 10 {
+		t.Errorf("Esperava 10 requisições Token permitidas, teve %d", successToken)
+	}
+
+	time.Sleep(2100 * time.Millisecond) // Desbloqueia o token para ser testado
+
+	successBoth := 0
+	for range 15 {
+		if lim.Allow(ip, token) {
+			successBoth++
+		}
+	}
+	if successBoth != 10 {
+		t.Errorf("Esperava 10 requisições IP+Token permitidas (via token), teve %d", successBoth)
+	}
+}

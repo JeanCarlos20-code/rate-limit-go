@@ -13,19 +13,27 @@ import (
 func main() {
 	cfg, err := config.LoadConfig(".")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to load configuration: %v", err)
 	}
-	rateLimiter := limiter.NewLimiter(5, cfg.GetJWTExpiresIn(), 60)
+
+	rl := limiter.NewLimiter(cfg.GetIPLimit(), cfg.GetTokenLimit(), cfg.GetBlockDuration())
+
+	if cfg.GetRateBackend() == "redis" {
+		log.Println("Rate limiter using Redis")
+		rl.UseRedis(cfg.GetRedisAddr(), cfg.GetRedisPassword())
+	} else {
+		log.Println("Rate limiter using local in-memory")
+	}
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Use(limiter.Middleware(rateLimiter))
+	r.Use(limiter.Middleware(rl))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Welcome!"))
+		w.Write([]byte("Hello! You have successfully accessed within the allowed limit."))
 	})
 
-	log.Println("Server running at :8080")
+	log.Println("Server is running on port :8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
 }

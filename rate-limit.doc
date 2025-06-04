@@ -1,0 +1,126 @@
+O que é Rate Limiting?
+
+Rate limiting (limitação de taxa) é uma técnica usada para controlar o número de requisições que um cliente pode fazer a um serviço dentro de um determinado período de tempo.
+Por que usar?
+  - Proteger a aplicação contra abuso ou ataques de negação de serviço (DoS)
+  - Evitar sobrecarga no servidor
+  - Garantir uso justo da API entre múltiplos usuários
+  - Controlar o consumo de recursos sensíveis ou limitados
+  - Garantir que não haja um excesso de requisição ao servidor
+
+Como funciona?
+Um rate limiter normalmente:
+  - Monitora cada requisição recebida.
+  - Associa cada requisição a uma chave (como IP ou token o qual foi usados como parâmetros no projeto).
+  - Conta quantas requisições essa chave já fez em uma janela de tempo.
+  - Permite ou bloqueia a requisição com base no limite configurado.
+  - Opcionalmente, bloqueia temporariamente uma chave que excedeu o limite.
+
+No caso deste projeto, o controle é feito por segundos, e quando o limite é excedido, o IP ou token é bloqueado temporariamente (BLOCK_DURATION_SECONDS).
+
+
+Objetivo
+Este projeto implementa um rate limiter configurável em Go, com controle por:
+  - Endereço IP
+  - Token de acesso via header API_KEY: <TOKEN>
+
+Com prioridade do token sobre o IP, permitindo controle granular e justo para usuários autenticados.
+
+
+Funcionamento
+Middleware
+  - Intercepta requisições HTTP
+  - Extrai IP do RemoteAddr e token do header API_KEY
+  - Verifica se o IP/token está dentro do limite usando Limiter.Allow(ip, token)
+  - Responde com 200 OK ou 429 Too Many Requests
+
+Limiter (núcleo da lógica)
+  - Suporta dois tipos de armazenamento:
+    - In-Memory com rate.Limiter
+    - Redis com INCR, EXPIRE, SET, EXISTS
+  - Registra contadores por segundo
+  - Aplica bloqueio temporário se o limite for excedido
+  - Mantém isolamento entre IPs e tokens
+
+
+Configuração via .env
+  - RATE_BACKEND=redis
+  - REDIS_ADDR=redis:6379
+  - REDIS_PASSWORD=
+  - RATE_LIMIT_IP=5
+  - RATE_LIMIT_TOKEN=10
+  - BLOCK_DURATION_SECONDS=300
+
+
+Testes Automatizados
+  - A suíte de testes cobre todos os comportamentos esperados do rate limiter, incluindo uso por IP, por token, o efeito de bloqueio e sua expiração.
+  - Poderá ser executada com go test -v ./...
+
+
+Testes de Lógica do Limiter
+TestLimiter_AllowsRequests_UnderIPLimit
+  - Garante que até 3 requisições por IP sejam permitidas
+  - Usa o backend in-memory
+  - Valida o funcionamento básico da taxa por IP
+
+TestLimiter_BlocksRequests_OverIPLimit
+  - Envia 3 requisições com limite de 2
+  - A 3ª deve ser bloqueada
+  - Valida o bloqueio após exceder o limite
+
+TestLimiter_AllowsRequests_AfterBlockExpires
+  - Envia requisição até ser bloqueado
+  - Aguarda BLOCK_DURATION_SECONDS
+  - Faz nova requisição e espera ser permitida
+  - Valida a liberação automática após o tempo de bloqueio
+
+TestLimiter_UsesTokenLimit_WhenProvided
+  - Usa um token com limite de 3
+  - As 3 primeiras requisições são permitidas
+  - A 4ª é bloqueada
+  - Valida o controle por token com limite próprio
+
+TestLimiter_TokenLimit_DoesNotInterfereWithIP
+  - Envia requisição por IP (limite 1) → bloqueia na 2ª
+  - Depois envia por token (limite 2) → permite 2, bloqueia 3ª
+  - Valida que token e IP têm contadores separados e independentes
+
+TestLimiter_Stress
+  Simula múltiplas requisições em sequência para testar os limites em três cenários:
+
+  - Apenas IP	Permite até 5 requisições, bloqueia as demais
+  - Apenas Token	Permite até 10 requisições, bloqueia as demais
+  - IP + Token combinados	Garante que o token continua tendo prioridade sobre o IP
+
+  Este teste reforça a robustez do rate limiter em condições realistas de uso intensivo.
+
+  Nota: Entre o segundo e o terceiro bloco do teste, há um time.Sleep() para simular a expiração do bloqueio e garantir que o token possa ser reutilizado.
+
+
+Testes de Middleware (com httptest)
+TestMiddleware_IPBlocking
+  - Simula servidor com limite de 1 req/s por IP
+  - A primeira deve retornar 200 OK
+  - A segunda imediatamente após deve retornar 429
+  - Valida integração do middleware com lógica de IP
+
+TestMiddleware_TokenPriority
+  - Usa um token com limite de 2
+  - Envia 3 requisições com o token
+  - As duas primeiras devem retornar 200
+  - A terceira deve retornar 429
+  - Valida que o middleware respeita o limite do token (não do IP)
+
+TestMiddleware_BlockExpires
+  - IP faz 2 requisições seguidas com limite 1 → bloqueio
+  - Aguarda tempo de bloqueio
+  - Nova requisição após espera deve retornar 200
+  - Valida o desbloqueio automático via middleware
+
+
+Conclusão
+Este rate limiter:
+  - Atende aos requisitos técnicos do desafio
+  - Suporta escalabilidade via Redis
+  - Possui fallback in-memory para desenvolvimento/testes
+  - Está validado com testes unitários e de integração detalhados

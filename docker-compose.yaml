@@ -1,10 +1,17 @@
-version: '3'
+version: "3"
 
 services:
   web:
     build: .
     ports:
-      - "8000:8000"
+      - "8080:8080"
     volumes:
       - .:/usr/src/app
     tty: true
+
+  redis:
+    image: redis:7.2
+    container_name: redis-rate-limiter
+    ports:
+      - "6379:6379"
+    restart: unless-stopped

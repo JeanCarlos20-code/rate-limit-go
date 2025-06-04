@@ -35,9 +35,6 @@ Middleware
   - Responde com 200 OK ou 429 Too Many Requests
 
 Limiter (núcleo da lógica)
-  - Suporta dois tipos de armazenamento:
-    - In-Memory com rate.Limiter
-    - Redis com INCR, EXPIRE, SET, EXISTS
   - Registra contadores por segundo
   - Aplica bloqueio temporário se o limite for excedido
   - Mantém isolamento entre IPs e tokens

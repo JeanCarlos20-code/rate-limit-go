@@ -40,7 +40,7 @@ Você pode modificar ou remover o header API_KEY para testar os diferentes modos
 go test ./... -v
 ```
 
-Mais informações
+### 6. Mais informações
 
 Para detalhes completos sobre:
   - Funcionamento do rate limiter

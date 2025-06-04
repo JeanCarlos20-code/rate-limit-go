@@ -6,7 +6,7 @@ Este projeto implementa um middleware de **Rate Limiting** em Go, com suporte a 
 
 ### 1. Clonar o repositório
 ```bash
-git clone https://github.com/seu-usuario/rate-limiter-go.git
+git clone https://github.com/JeanCarlos20-code/rate-limit-go.git
 cd rate-limiter-go
 ```
 
